@@ -663,6 +663,13 @@ async function main(): Promise<void> {
         }
       }
       storeMessage(msg);
+
+      // Fire typing indicator immediately so the user sees a reaction
+      // before the message loop picks up the message.
+      if (!msg.is_from_me && !msg.is_bot_message) {
+        const ch = findChannel(channels, chatJid);
+        ch?.setTyping?.(chatJid, true)?.catch(() => undefined);
+      }
     },
     onChatMetadata: (
       chatJid: string,

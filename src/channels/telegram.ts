@@ -142,7 +142,9 @@ export class TelegramChannel implements Channel {
         if (TELEGRAM_BOT_COMMANDS.has(cmd)) return;
       }
 
-      const chatJid = `tg:${ctx.chat.id}`;
+      const threadId = ctx.message.message_thread_id;
+      const baseChatJid = `tg:${ctx.chat.id}`;
+      const topicChatJid = threadId ? `tg:${ctx.chat.id}:topic:${threadId}` : baseChatJid;
       let content = ctx.message.text;
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
       const senderName =
@@ -152,7 +154,6 @@ export class TelegramChannel implements Channel {
         'Unknown';
       const sender = ctx.from?.id.toString() || '';
       const msgId = ctx.message.message_id.toString();
-      const threadId = ctx.message.message_thread_id;
 
       const replyTo = ctx.message.reply_to_message;
       const replyToMessageId = replyTo?.message_id?.toString();
@@ -168,7 +169,7 @@ export class TelegramChannel implements Channel {
       const chatName =
         ctx.chat.type === 'private'
           ? senderName
-          : (ctx.chat as any).title || chatJid;
+          : (ctx.chat as any).title || topicChatJid;
 
       // Translate Telegram @bot_username mentions into TRIGGER_PATTERN format.
       // Telegram @mentions (e.g., @andy_ai_bot) won't match TRIGGER_PATTERN
@@ -194,15 +195,19 @@ export class TelegramChannel implements Channel {
       const isGroup =
         ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
       this.opts.onChatMetadata(
-        chatJid,
+        topicChatJid,
         timestamp,
         chatName,
         'telegram',
         isGroup,
       );
 
-      // Only deliver full message for registered groups
-      const group = this.opts.registeredGroups()[chatJid];
+      // Resolve JID: prefer topic-specific, fall back to base group
+      const registeredGroups = this.opts.registeredGroups();
+      const chatJid = registeredGroups[topicChatJid]
+        ? topicChatJid
+        : baseChatJid;
+      const group = registeredGroups[chatJid];
       if (!group) {
         logger.debug(
           { chatJid, chatName },
@@ -238,8 +243,16 @@ export class TelegramChannel implements Channel {
       placeholder: string,
       opts?: { fileId?: string; filename?: string },
     ) => {
-      const chatJid = `tg:${ctx.chat.id}`;
-      const group = this.opts.registeredGroups()[chatJid];
+      const mediaThreadId = ctx.message.message_thread_id;
+      const mediaBaseChatJid = `tg:${ctx.chat.id}`;
+      const mediaTopicChatJid = mediaThreadId
+        ? `tg:${ctx.chat.id}:topic:${mediaThreadId}`
+        : mediaBaseChatJid;
+      const registeredGroups = this.opts.registeredGroups();
+      const chatJid = registeredGroups[mediaTopicChatJid]
+        ? mediaTopicChatJid
+        : mediaBaseChatJid;
+      const group = registeredGroups[chatJid];
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
@@ -370,9 +383,12 @@ export class TelegramChannel implements Channel {
     }
 
     try {
-      const numericId = jid.replace(/^tg:/, '');
-      const options = threadId
-        ? { message_thread_id: parseInt(threadId, 10) }
+      // Parse topic-aware JIDs: tg:-1003786595778:topic:8
+      const topicMatch = jid.match(/^tg:(-?\d+):topic:(\d+)$/);
+      const numericId = topicMatch ? topicMatch[1] : jid.replace(/^tg:/, '');
+      const resolvedThreadId = topicMatch ? topicMatch[2] : threadId;
+      const options = resolvedThreadId
+        ? { message_thread_id: parseInt(resolvedThreadId, 10) }
         : {};
 
       // Telegram has a 4096 character limit per message — split if needed
@@ -417,8 +433,12 @@ export class TelegramChannel implements Channel {
   async setTyping(jid: string, isTyping: boolean): Promise<void> {
     if (!this.bot || !isTyping) return;
     try {
-      const numericId = jid.replace(/^tg:/, '');
-      await this.bot.api.sendChatAction(numericId, 'typing');
+      const topicMatch = jid.match(/^tg:(-?\d+):topic:(\d+)$/);
+      const numericId = topicMatch ? topicMatch[1] : jid.replace(/^tg:/, '');
+      const options = topicMatch
+        ? { message_thread_id: parseInt(topicMatch[2], 10) }
+        : {};
+      await this.bot.api.sendChatAction(numericId, 'typing', options);
     } catch (err) {
       logger.debug({ jid, err }, 'Failed to send Telegram typing indicator');
     }
