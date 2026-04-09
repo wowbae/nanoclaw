@@ -90,7 +90,10 @@ export class TelegramChannel implements Channel {
       const fileUrl = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
       const resp = await fetch(fileUrl);
       if (!resp.ok) {
-        logger.warn({ fileId, status: resp.status }, 'Telegram file download failed');
+        logger.warn(
+          { fileId, status: resp.status },
+          'Telegram file download failed',
+        );
         return null;
       }
 
@@ -144,7 +147,9 @@ export class TelegramChannel implements Channel {
 
       const threadId = ctx.message.message_thread_id;
       const baseChatJid = `tg:${ctx.chat.id}`;
-      const topicChatJid = threadId ? `tg:${ctx.chat.id}:topic:${threadId}` : baseChatJid;
+      const topicChatJid = threadId
+        ? `tg:${ctx.chat.id}:topic:${threadId}`
+        : baseChatJid;
       let content = ctx.message.text;
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
       const senderName =
