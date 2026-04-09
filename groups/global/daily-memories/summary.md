@@ -26,7 +26,7 @@
 - Core mechanic: user sends photo → Midjourney generates caricature → levels up with each gym visit (0-100 scale)
 - MVP plan: 2 weeks, Telegraf/SQLite, freemium 10k/mo
 - Pilot contacts: colleague "DDX" (offered free 1 month, +15% retention goal), 2 Moscow clubs
-- Revenue potential: 10 clubs = 100k+, 50 clubs = 1M/mo passive income
+- Revenue potential: 10 clubs = 100k+ rubs, 50 clubs = 1M/mo passive income
 - Style lock: use Midjourney `--sref` for consistent avatar style across all users
 - GDPR-conscious: stores caricature, not original photo
 
@@ -37,7 +37,7 @@
 
 ## Technical Preferences & Setup
 - **AI Model:** uses cometapi-openai, various models (grok-4-1-fast, gpt-5.4-nano)
-- **Knowledge Base:** GitHub repo `github.com/wowbae/knowledge-base`
+- **Knowledge Base:** GitHub repo `groups/global/brain`
 - **Second Brain system:** uses brain/ directory with review/process/embed/sync pipeline
 - **Missing API key:** OpenRouter API key not configured (AI review/cost analysis blocked)
 
